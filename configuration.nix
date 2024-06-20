@@ -2,58 +2,68 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, ... }:
 
 {
   imports =
-    [ # Include the results of the hardware scan.
+    [ 
       ./hardware-configuration.nix
     ];
-  nixpkgs.config.allowUnfree = true;
 
+  nixpkgs.config.allowUnfree = true;
+  
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.systemd-boot.configurationLimit = 10;
 
-  networking.hostName = "nixos"; # Define your hostname.
-  # Pick only one of the below networking options.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
-  networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
-
-  # Set your time zone.
-  time.timeZone = "Europe/Rome";
-
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  # Select internationalisation properties.
-   i18n.defaultLocale = "it_IT.UTF-8";
-   console = {
-     font = "Lat2-Terminus16";
-#     keyMap = "us";
-     useXkbConfig = true; # use xkb.options in tty.
-   };
-
-   hardware.bluetooth.enable = true;
-   
-  # Enable the X11 windowing system.
-  services.xserver.enable = true;
-  services.xserver.displayManager.gdm = {
-    enable = true;
-    wayland = true;
-  };
-  #services.displayManager.autoLogin = {
-  #  user = "william";
-  #  enable = true;
-  #};
   hardware.opengl = {
     enable = true;
     driSupport = true;
     driSupport32Bit = true;
+    
+  };
+  hardware.nvidia.modesetting.enable = true;  
+  hardware.bluetooth.enable = true;
+
+  
+  #  X11 
+  services.xserver = {
+    enable = true;
+    videoDrivers = ["nvidia"];
+    xkb = {
+      layout = "us";
+      variant = "intl"; 
+      options = "ctrl:swapcaps";
+    };
+    displayManager.gdm = {
+      enable = true;
+      wayland = true;
+    };
   };
 
-   networking.firewall = { 
+  services.xserver.desktopManager.xfce.enable = true;
+  
+  # Wayland
+  programs.hyprland = {
+    enable = true;
+    xwayland.enable = true;
+   };
+  xdg.portal = {
+    enable = true;
+    wlr.enable = true;
+    xdgOpenUsePortal = true;
+    extraPortals = [
+      pkgs.xdg-desktop-portal-hyprland
+      pkgs.xdg-desktop-portal-gtk
+    ];
+  };
+  
+  # Networking
+  networking.hostName = "nixos"; # Define your hostname.
+  networking.networkmanager.enable = true;
+
+  networking.firewall = { 
     enable = true;
     allowedTCPPortRanges = [ 
       { from = 1714; to = 1764; } # KDE Connect
@@ -63,83 +73,49 @@
     ];  
   };  
 
-  
-  services.xserver.videoDrivers = ["nvidia"];
-  hardware.nvidia.modesetting.enable = true;  
-
-  # Configure keymap in X11
-  services.xserver.xkb.layout = "us";
-  services.xserver.xkb.variant = "intl"; 
-  services.xserver.xkb.options = "ctrl:swapcaps";
-
-  # Enable CUPS to print documents.
-  # services.printing.enable = true;
-
   # Enable sound.
-  # hardware.pulseaudio.enable = true;
-  # OR
   services.pipewire = {
     enable = true;
     pulse.enable = true;
+    alsa.enable = true;
   };
 
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.libinput.enable = true;
-
+  # Security
+  security.polkit.enable = true;
+ 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.william = {
     isNormalUser = true;
     extraGroups = [ "wheel" "input" "networkmanager" ]; # Enable ‘sudo’ for the user.
   };
-
+  
+  # Nix System
   # Enable the Flakes feature and the accompanying new nix command-line tool
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
-   environment.systemPackages = with pkgs; [
+  nix.settings.auto-optimise-store = true;
+  nix.gc = {
+     automatic = true;
+     dates = "weekly";
+     options = "--delete-older-than 1w";
+   };
+
+  i18n.defaultLocale = "it_IT.UTF-8"; # Select internationalisation properties.
+  console.useXkbConfig = true;
+  time.timeZone = "Europe/Rome";
+
+  environment.systemPackages = with pkgs; [
      git
      borgbackup
      wine
      nvtopPackages.full
      libnotify
    ];
-   programs.hyprland = {
-    enable = true;
-    xwayland.enable = true;
-   };
    
-   services.xserver.desktopManager.xfce.enable = true;
+  programs.steam.enable = true;
+  programs.steam.gamescopeSession.enable = true;
+  programs.gamemode.enable = true;
 
-     programs.steam.enable = true;
-   programs.steam.gamescopeSession.enable = true;
-   programs.gamemode.enable = true;
-   
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
-
-   # Limit the number of generations to keep
-   boot.loader.systemd-boot.configurationLimit = 10;
-   # boot.loader.grub.configurationLimit = 10;
-
-   # Perform garbage collection weekly to maintain low disk usage
-   nix.gc = {
-     automatic = true;
-     dates = "weekly";
-     options = "--delete-older-than 1w";
-   };
-   
-   # Optimize storage
-   # You can also manually optimize the store via:
-   #    nix-store --optimise
-   # Refer to the following link for more details:
-   # https://nixos.org/manual/nix/stable/command-ref/conf-file.html#conf-auto-optimise-store
-   nix.settings.auto-optimise-store = true;
-   
+  # Devices
   fileSystems."/home/william/mnt/Backup" = {
     device = "/dev/disk/by-uuid/cb191cb2-e2ea-40b4-9958-37bb26159352";
     fsType = "ext4";
@@ -153,22 +129,8 @@
    device = "/dev/disk/by-uuid/24926996-946b-4768-9e69-b39d907c876e";
    fsType = "ext4";
   };
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
-
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
-
-  # Copy the NixOS configuration file and link it from the resulting system
-  # (/run/current-system/configuration.nix). This is useful in case you
-  # accidentally delete configuration.nix.
-  # system.copySystemConfiguration = true;
-
+  
+ 
   # This option defines the first version of NixOS you have installed on this particular machine,
   # and is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.
   #
