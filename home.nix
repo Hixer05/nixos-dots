@@ -168,6 +168,7 @@
       "$mainMod SHIFT, 1, workspace, 1"
       "$mainMod SHIFT, 2, workspace, 2"
       "$mainMod SHIFT, 3, workspace, 3"
+      "$mainMod SHIFT, 4, workspace, 4"
       "$mainMod SHIFT, 5, workspace, 5"
       "$mainMod SHIFT, 6, workspace, 6"
       "$mainMod SHIFT, 7, workspace, 7"
